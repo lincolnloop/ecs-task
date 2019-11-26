@@ -1,2 +1,7 @@
 /.coverage
 /htmlcov
+/.pytest_cache
+/.idea
+/dist
+__pycache__
+*.pyc

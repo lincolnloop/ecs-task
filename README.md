@@ -4,7 +4,7 @@
 
 It is built on the following premises:
 
-* ECS Services, load balancers, auto-scaling, etc. is managed elsewhere, e.g. Terraform, Cloudformation, etc.
+* ECS Services, load balancers, auto-scaling, etc. are managed elsewhere, e.g. Terraform, Cloudformation, etc.
 * Deploying to ECS is defined as:
     1. Update task definition with new image tag
     2. [Optional] Running any number of one-off Tasks, e.g. Django database migrations.

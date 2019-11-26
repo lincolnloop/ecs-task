@@ -79,7 +79,7 @@ class ECSTask:
 
     def deregister_tasks(self):
         """Deregister tasks older than `keep_active` count."""
-        for deregister_arn in self.active_task_definitions()[self.active_task_count:]:
+        for deregister_arn in self.active_task_definitions()[self.active_task_count :]:
             self.boto3_call(
                 "ecs", "deregister_task_definition", taskDefinition=deregister_arn
             )

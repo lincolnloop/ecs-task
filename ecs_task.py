@@ -1,13 +1,17 @@
 """Helper for registering new task definitions on AWS ECS and updating associated services."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 import argparse
 import json
 import sys
-from typing import Any, Callable, List, Tuple
+from typing import Any, List, Optional
 
 import boto3
+
+
+class ECSError(Exception):
+    pass
 
 
 class ECSTask:
@@ -51,16 +55,20 @@ class ECSTask:
                 taskDefinition=task_definition_arn,
                 **update_service_kwargs
             )
-            print("  Updated service: {}".format(update_service_kwargs["service"]))
+            print("  Updating service: {}".format(update_service_kwargs["service"]))
 
     def ecs_run_tasks(self, task_definition_arn):
         # type: (str) -> None
         """Run any one-off tasks for latest task definition"""
         for run_task_kwargs in self.run_tasks:
-            self.boto3_call(
+            task = self.boto3_call(
                 "ecs", "run_task", taskDefinition=task_definition_arn, **run_task_kwargs
             )
-            print("  Running task: {}".format(task_definition_arn.split("/")[1]))
+            try:
+                task_arn = task["tasks"][0]["taskArn"]
+            except (KeyError, IndexError):
+                raise ECSError("Task failed to start: {}".format(task))
+            print("  Running task: {}".format(task_arn))
 
     def put_targets(self, task_definition_arn):
         # type: (str) -> None
@@ -146,8 +154,7 @@ class ECSTask:
             )
         )
 
-    def parse_args(self, arg_list):
-        # type: (List[str]) -> Tuple[Callable, dict]
+    def arg_parser(self):
         parser = argparse.ArgumentParser(description="ECS Task Update")
         commands = parser.add_subparsers()
         deploy_parser = commands.add_parser(
@@ -170,13 +177,14 @@ class ECSTask:
             "debug", help="Dump JSON generated for class attributes.",
         )
         debug_parser.set_defaults(method=self.debug)
-        args = vars(parser.parse_args(arg_list))
-        method = args.pop("method")
-        return method, args
+        return parser, commands
 
     def main(self, arg_list=None):
-        # type: (List[str]) -> None
-        if arg_list is None:
-            arg_list = sys.argv[1:]
-        method, args = self.parse_args(arg_list)
+        # type: (Optional[List[str]]) -> None
+        args = vars(
+            self.arg_parser()[0].parse_args(
+                sys.argv[1:] if arg_list is None else arg_list
+            )
+        )
+        method = args.pop("method")
         method(**args)

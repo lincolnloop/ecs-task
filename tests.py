@@ -1,40 +1,40 @@
 import json
 
 import pytest
-from ecs_task import ECSTask
+from ecs_task import ECSTask, ECSError
 
 
 def test_parse_deploy_args():
     e = ECSTask()
-    method, args = e.parse_args(["deploy", "000"])
-    assert method == e.deploy
-    assert args == {"image_tag": "000"}
+    args = e.arg_parser()[0].parse_args(["deploy", "000"])
+    assert args.method == e.deploy
+    assert args.image_tag == "000"
 
 
 def test_parse_bad_deploy_args():
     e = ECSTask()
     with pytest.raises(SystemExit):
-        e.parse_args(["deploy"])
+        e.arg_parser()[0].parse_args(["deploy"])
 
 
 def test_parse_rollback_args():
     e = ECSTask()
-    method, args = e.parse_args(["rollback"])
-    assert method == e.rollback
-    assert args == {}
+    args = e.arg_parser()[0].parse_args(["rollback"])
+    assert args.method == e.rollback
+    assert len(vars(args)) == 1
 
 
 def test_parse_debug_args():
     e = ECSTask()
-    method, args = e.parse_args(["debug"])
-    assert method == e.debug
-    assert args == {}
+    args = e.arg_parser()[0].parse_args(["debug"])
+    assert args.method == e.debug
+    assert len(vars(args)) == 1
 
 
 def test_parse_bad_rollback_args():
     e = ECSTask()
     with pytest.raises(SystemExit):
-        e.parse_args(["rollback", "000"])
+        e.arg_parser()[0].parse_args(["rollback", "000"])
 
 
 def test_main(mocker):
@@ -70,10 +70,11 @@ def test_service_update(mocker):
 
 
 def test_run_task(mocker):
-    mocked = mocker.patch.object(ECSTask, "boto3_call")
+    mocked = mocker.patch.object(ECSTask, "boto3_call", return_value={"tasks": []})
     e = ECSTask()
     e.run_tasks = [{"a": "b"}]
-    e.ecs_run_tasks("arn/id")
+    with pytest.raises(ECSError):
+        e.ecs_run_tasks("arn/id")
     assert mocked.call_count == 1
     mocked.assert_called_with(
         "ecs", "run_task", taskDefinition="arn/id", **e.run_tasks[0]
@@ -151,7 +152,9 @@ def test_events_put_targets(mocker):
 
 
 def test_end_to_end(mocker):
-    mocked = mocker.patch.object(ECSTask, "boto3_call")
+    mocked = mocker.patch.object(
+        ECSTask, "boto3_call", return_value={"tasks": [{"taskArn": "arn/id"}]}
+    )
     mocker.patch.object(ECSTask, "register_task_definition", return_value="arn/id")
     mocker.patch.object(
         ECSTask,

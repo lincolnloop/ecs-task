@@ -1,0 +1,8 @@
+.pytest_cache
+dist
+htmlcov
+.coverage
+*.pyc
+Dockerfile
+docker-compose.yml
+.github

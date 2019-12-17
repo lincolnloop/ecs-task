@@ -1,0 +1,11 @@
+# For development/testing purposes only
+version: "3.4"
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        python_version: ${PYVER:-3.8}
+    volumes:
+    - .:/home/app/code

@@ -73,12 +73,27 @@ optional arguments:
 
 ## Class attributes
 
-A sub-class of `ECSTask` must include a `task_definition` to do anything. Any other attributes are optional. Each attribute is designed to be a 1-to-1 mapping to an AWS API endpoint via [`boto3`](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html). The values you provide will be passed as keyword arguments to the associated method with the correct Task Definition inserted. Any attribute that takes a list can make multiple calls to the given API.
+A sub-class of `ECSTask` must include a `task_definition` to do anything. Any other attributes are optional. The following attributes are designed to be a 1-to-1 mapping to an AWS API endpoint via [`boto3`](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html). The values you provide will be passed as keyword arguments to the associated method with the correct Task Definition inserted. Any attribute that takes a list can make multiple calls to the given API.
 
 * `task_definition`: (dict) [`ecs.register_task_definition` docs](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ecs.html#ECS.Client.register_task_definition)
 * `update_services` (list) [`ecs.update_service` docs](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ecs.html#ECS.Client.update_service)
 * `run_tasks` (list) [`ecs.run_task` docs](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ecs.html#ECS.Client.run_task)
 * `events__put_targets` (list) [`events.put_targets` docs](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/events.html#EventBridge.Client.put_targets)
+
+A few additional attributes are available:
+
+* `active_task_count`: (int) the number of task definitions to keep active after a deployment. Default is `10`.
+* `sns_notification_topic_arn`: (str) the ARN for an SNS topic which will receive a message whenever an AWS API call is executed. This can be used to trigger notifications or perform additional tasks related to the deployment. The message is in the format:
+
+    ```python
+      {
+        "client": client,  # boto3 client (usually "ecs")
+        "method": method,  # method called (e.g., "update_service")
+        "input": kwargs,   # method input as a dictionary
+        "result": result   # results from AWS API
+      }
+    ```
+* `notification_method_blacklist_regex` (re.Pattern) a pattern of methods to avoid sending notifications for. Default is `re.compile(r"^describe_|get_|list_|.*register_task")`
 
 ## Command Interface
 
@@ -102,7 +117,7 @@ The `deploy` subcommand accepts an additional argument, `image_tag` which is use
 2. Run Tasks (as defined in `run_tasks`)
 3. Update Services (as defined in `update_services`)
 4. Update Event Targets (as defined in `events__put_targets`)
-5. Deregister any active Task Definitions older than `active_task_count` (by default, `5`)
+5. Deregister any active Task Definitions older than `active_task_count` (by default, `10`)
 
 ### `rollback`
 

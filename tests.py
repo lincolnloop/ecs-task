@@ -52,7 +52,7 @@ def test_family():
 
 
 def test_service_update(mocker):
-    mocked = mocker.patch.object(ECSTask, "boto3_call")
+    mocked = mocker.patch.object(ECSTask, "_boto3")
     e = ECSTask()
     e.update_services = [{"service": "b", "c": "d"}, {"service": "2"}]
     e.ecs_update_services("arn")
@@ -70,7 +70,7 @@ def test_service_update(mocker):
 
 
 def test_run_task(mocker):
-    mocked = mocker.patch.object(ECSTask, "boto3_call", return_value={"tasks": []})
+    mocked = mocker.patch.object(ECSTask, "_boto3", return_value={"tasks": []})
     e = ECSTask()
     e.run_tasks = [{"a": "b"}]
     with pytest.raises(ECSError):
@@ -94,7 +94,7 @@ def test_inject_image_tag():
 
 
 def test_active_task_definitions(mocker):
-    mocked = mocker.patch.object(ECSTask, "boto3_call")
+    mocked = mocker.patch.object(ECSTask, "_boto3")
     e = ECSTask()
     e.task_definition = {"family": "a"}
     e.active_task_definitions()
@@ -120,7 +120,7 @@ def test_debug(capsys):
 def test_register_task_definition(mocker):
     mocked = mocker.patch.object(
         ECSTask,
-        "boto3_call",
+        "_boto3",
         return_value={"taskDefinition": {"taskDefinitionArn": "arn/id"}},
     )
     e = ECSTask()
@@ -132,7 +132,7 @@ def test_register_task_definition(mocker):
 
 
 def test_events_put_targets(mocker):
-    mocked = mocker.patch.object(ECSTask, "boto3_call")
+    mocked = mocker.patch.object(ECSTask, "_boto3")
     e = ECSTask()
     e.events__put_targets = [
         {"Rule": "a", "Targets": [{"Id": "lorem", "EcsParameters": {}}]}
@@ -147,13 +147,13 @@ def test_events_put_targets(mocker):
             "Targets": [
                 {"Id": "lorem", "EcsParameters": {"TaskDefinitionArn": "arn/id"}}
             ],
-        }
+        },
     )
 
 
 def test_end_to_end(mocker):
     mocked = mocker.patch.object(
-        ECSTask, "boto3_call", return_value={"tasks": [{"taskArn": "arn/id"}]}
+        ECSTask, "_boto3", return_value={"tasks": [{"taskArn": "arn/id"}]}
     )
     mocker.patch.object(ECSTask, "register_task_definition", return_value="arn/id")
     mocker.patch.object(
@@ -193,7 +193,7 @@ def test_end_to_end(mocker):
                             "EcsParameters": {"TaskDefinitionArn": "arn/id"},
                         }
                     ],
-                }
+                },
             ),
             mocker.call("ecs", "deregister_task_definition", taskDefinition="arn/id:2"),
             mocker.call("ecs", "deregister_task_definition", taskDefinition="arn/id:1"),
@@ -202,7 +202,7 @@ def test_end_to_end(mocker):
 
 
 def test_end_to_end_rollback(mocker):
-    mocked = mocker.patch.object(ECSTask, "boto3_call")
+    mocked = mocker.patch.object(ECSTask, "_boto3")
     mocker.patch.object(
         ECSTask,
         "active_task_definitions",
@@ -234,7 +234,7 @@ def test_end_to_end_rollback(mocker):
                 "ecs",
                 "update_service",
                 taskDefinition="arn/id:{}".format(ECSTask.active_task_count - 1),
-                **e.update_services[0]
+                **e.update_services[0],
             ),
             mocker.call(
                 "events",
@@ -251,7 +251,35 @@ def test_end_to_end_rollback(mocker):
                             },
                         }
                     ],
-                }
+                },
             ),
         ]
     )
+
+
+def test_sns_notification(mocker):
+    e = ECSTask()
+    e.sns_notification_topic_arn = "fake"
+    mocked = mocker.patch.object(ECSTask, "_boto3")
+    kwargs = {"test": "one"}
+    e.boto3_call("ecs", "update_service", **kwargs)
+    assert mocked.call_count == 2
+    sns_call = mocked._mock_mock_calls[1]
+    sns_call_args = sns_call[1]
+    sns_call_kwargs = sns_call[2]
+    assert sns_call_args == ("sns", "publish")
+    assert sns_call_kwargs["TargetArn"] == e.sns_notification_topic_arn
+    assert json.loads(sns_call_kwargs["Message"]) == {
+        "client": "ecs",
+        "result": None,
+        "input": kwargs,
+        "method": "update_service",
+    }
+
+
+def test_sns_notification_blacklist(mocker):
+    e = ECSTask()
+    e.sns_notification_topic_arn = "fake"
+    mocked = mocker.patch.object(ECSTask, "_boto3")
+    e.boto3_call("ecs", "describe_task_definition", test="one")
+    assert mocked.call_count == 1

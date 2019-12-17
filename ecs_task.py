@@ -3,15 +3,22 @@
 __version__ = "0.2.0"
 
 import argparse
+import datetime
 import json
+import logging
+import re
 import sys
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Pattern
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 class ECSError(Exception):
     pass
+
+
+log = logging.getLogger(__name__)
 
 
 class ECSTask:
@@ -24,9 +31,39 @@ class ECSTask:
     # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/events.html#EventBridge.Client.put_targets
     events__put_targets = []  # type: List[dict]
     active_task_count = 10  # type: int
+    sns_notification_topic_arn = None  # type: Optional[str]
+    notification_method_blacklist_regex = re.compile(
+        r"^describe_|get_|list_|.*register_task"
+    )  # type: Pattern
 
     def boto3_call(self, client, method, **kwargs):
         # type: (str, str, Any) -> dict
+        """Make call to boto3 and optionally publish to SNS"""
+        result = self._boto3(client, method, **kwargs)
+        if self.sns_notification_topic_arn:
+            blacklisted = self.notification_method_blacklist_regex.match(method)
+            if not blacklisted:
+                self._boto3(
+                    "sns",
+                    "publish",
+                    TargetArn=self.sns_notification_topic_arn,
+                    Message=json.dumps(
+                        {
+                            "client": client,
+                            "method": method,
+                            "input": kwargs,
+                            "result": result,
+                        },
+                        default=lambda o: o.isoformat
+                        if isinstance(o, (datetime.date, datetime.datetime))
+                        else None,
+                    ),
+                )
+        return result
+
+    def _boto3(self, client, method, **kwargs):
+        # type: (str, str, Any) -> dict
+        """boto3 wrapper used to facilitate testing/mocking"""
         return getattr(boto3.client(client), method)(**kwargs)
 
     @property

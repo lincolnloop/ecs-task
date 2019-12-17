@@ -159,7 +159,10 @@ def test_end_to_end(mocker):
     mocker.patch.object(
         ECSTask,
         "active_task_definitions",
-        return_value=["arn/id:{}".format(i) for i in reversed(range(1, 8))],
+        return_value=[
+            "arn/id:{}".format(i)
+            for i in reversed(range(1, ECSTask.active_task_count + 3))
+        ],
     )
     e = ECSTask()
     e.task_definition = {
@@ -203,7 +206,10 @@ def test_end_to_end_rollback(mocker):
     mocker.patch.object(
         ECSTask,
         "active_task_definitions",
-        return_value=["arn/id:{}".format(i) for i in reversed(range(1, 6))],
+        return_value=[
+            "arn/id:{}".format(i)
+            for i in reversed(range(1, ECSTask.active_task_count + 1))
+        ],
     )
     e = ECSTask()
     e.task_definition = {
@@ -219,11 +225,15 @@ def test_end_to_end_rollback(mocker):
     assert mocked.call_count == 3
     mocked.assert_has_calls(
         [
-            mocker.call("ecs", "deregister_task_definition", taskDefinition="arn/id:5"),
+            mocker.call(
+                "ecs",
+                "deregister_task_definition",
+                taskDefinition="arn/id:{}".format(ECSTask.active_task_count),
+            ),
             mocker.call(
                 "ecs",
                 "update_service",
-                taskDefinition="arn/id:4",
+                taskDefinition="arn/id:{}".format(ECSTask.active_task_count - 1),
                 **e.update_services[0]
             ),
             mocker.call(
@@ -234,7 +244,11 @@ def test_end_to_end_rollback(mocker):
                     "Targets": [
                         {
                             "Id": "lorem",
-                            "EcsParameters": {"TaskDefinitionArn": "arn/id:4"},
+                            "EcsParameters": {
+                                "TaskDefinitionArn": "arn/id:{}".format(
+                                    ECSTask.active_task_count - 1
+                                )
+                            },
                         }
                     ],
                 }

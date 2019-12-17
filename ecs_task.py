@@ -23,7 +23,7 @@ class ECSTask:
     run_tasks = []  # type: List[dict]
     # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/events.html#EventBridge.Client.put_targets
     events__put_targets = []  # type: List[dict]
-    active_task_count = 5  # type: int
+    active_task_count = 10  # type: int
 
     def boto3_call(self, client, method, **kwargs):
         # type: (str, str, Any) -> dict

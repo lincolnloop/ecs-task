@@ -9,3 +9,4 @@ services:
         python_version: ${PYVER:-3.8}
     volumes:
     - .:/home/app/code
+    - ~/.pypirc:/home/app/.pypirc:ro

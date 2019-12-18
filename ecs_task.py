@@ -1,6 +1,6 @@
 """Helper for registering new task definitions on AWS ECS and updating associated services."""
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 import argparse
 import datetime

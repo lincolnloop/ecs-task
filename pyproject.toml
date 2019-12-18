@@ -26,3 +26,13 @@ test = [
     "pytest-cov",
     "pytest-mock",
 ]
+
+[tool.flit.sdist]
+exclude = [
+    ".dockerignore",
+    ".gitignore",
+    "CHANGELOG.md",
+    "Dockerfile",
+    "docker-compose.yml",
+    "tests.py",
+]

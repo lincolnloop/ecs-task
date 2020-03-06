@@ -1,3 +1,5 @@
+![Test](https://github.com/lincolnloop/ecs-task/workflows/Test/badge.svg)
+
 # `ecs-task`
 
 `ecs-task` is an opinionated, but flexible tool for deploying to [Amazon Web Service's Elastic Container Service](https://aws.amazon.com/ecs/).

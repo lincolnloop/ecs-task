@@ -1,4 +1,4 @@
-![Test](https://github.com/lincolnloop/ecs-task/workflows/Test/badge.svg)
+![[Test](https://github.com/lincolnloop/ecs-task/workflows/Test/badge.svg)](https://github.com/lincolnloop/ecs-task/actions?query=workflow%3ATest)
 
 # `ecs-task`
 
